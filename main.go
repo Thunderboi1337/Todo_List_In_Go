@@ -60,15 +60,16 @@ func write_todo(file *os.File) {
 	fmt.Println("Enter something random: ")
 
 	// var then variable name then variable type
-	var first string
+	var first string = "\n"
 
+	longstrng := first
 	// Taking input from user
 	fmt.Scanln(&first)
 	fmt.Println("Enter something random again: ")
 	var second string
 	fmt.Scanln(&second)
 
-	longstrng := first
+	longstrng += first
 	longstrng += ", " + second
 
 	fmt.Print(longstrng)
