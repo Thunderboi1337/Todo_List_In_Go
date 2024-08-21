@@ -2,14 +2,15 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
 )
 
-type Employee struct {
-	ID  string
-	Age int
+type TodoList struct {
+	Task     string
+	Priority string
 }
 
 func main() {
@@ -35,18 +36,33 @@ func main() {
 	}
 
 	// Pass the file to the read_todo function
-	read_todo(csvFile)
-	write_todo(csvFile)
-	read_todo(csvFile)
+	task_write(csvFile)
+
+	_, err := csvFile.Seek(0, 0)
+	if err != nil {
+		log.Fatalf("failed to reset file pointer: %s", err)
+	}
+
+	task_get(csvFile)
+
+	_, err = csvFile.Seek(0, 0)
+	if err != nil {
+		log.Fatalf("failed to reset file pointer: %s", err)
+	}
+
+	task_remove(csvFile, 3)
 
 }
 
 // Function that accepts the file as an argument and reads data from file argument
-func read_todo(file *os.File) {
+func task_get(file *os.File) {
+
+	i := 0
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		// Print each line in the file
-		log.Println(scanner.Text())
+		i++
+
+		fmt.Println(i, scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -55,34 +71,65 @@ func read_todo(file *os.File) {
 }
 
 // Function that accepts the file as an argument and writes data to the file argument
-func write_todo(file *os.File) {
+func task_write(file *os.File) {
 
-	fmt.Println("Enter something random: ")
+	var task, priority string
 
-	// var then variable name then variable type
-	var first string = "\n"
+	reader := bufio.NewReader(os.Stdin)
 
-	longstrng := first
-	// Taking input from user
-	fmt.Scanln(&first)
-	fmt.Println("Enter something random again: ")
-	var second string
-	fmt.Scanln(&second)
+	fmt.Println("Enter task: ")
+	task, _ = reader.ReadString('\n')
+	task = task[:len(task)-1]
 
-	longstrng += first
-	longstrng += ", " + second
+	fmt.Println("Enter priority: ")
+	priority, _ = reader.ReadString('\n')
+	priority = priority[:len(priority)-1]
 
-	fmt.Print(longstrng)
-
-	writer := bufio.NewWriter(file)
-	da, err := writer.WriteString(longstrng)
-	if err != nil {
-		log.Fatalf("error write file: %d", da)
+	todo := TodoList{
+		Task:     task,
+		Priority: priority,
 	}
 
-	err = writer.Flush()
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	record := []string{todo.Task, todo.Priority}
+	err := writer.Write(record)
 	if err != nil {
-		log.Fatalf("error flushing buffer: %s", err)
+		log.Fatalf("error writing record to file: %s", err)
 	}
 
+}
+
+func task_remove(file *os.File, taskRemove int) error {
+	// Read all records from the file
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return fmt.Errorf("error reading CSV file: %w", err)
+	}
+
+	// Check if taskRemove is within bounds
+	if taskRemove < 0 || taskRemove >= len(records) {
+		return fmt.Errorf("row index %d out of bounds", taskRemove)
+	}
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		log.Fatalf("failed to reset file pointer: %s", err)
+	}
+
+	// Remove the specific row
+	records = append(records[:taskRemove], records[taskRemove+1:]...)
+
+	// Write the updated records back to the file
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	err = writer.WriteAll(records)
+	if err != nil {
+		return fmt.Errorf("error writing CSV file: %w", err)
+	}
+
+	return nil
 }
