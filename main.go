@@ -15,6 +15,7 @@ type TodoList struct {
 }
 
 func main() {
+
 	var csvFile *os.File
 
 	if _, err := os.Stat("todo_list.csv"); os.IsNotExist(err) {
@@ -39,48 +40,39 @@ func main() {
 	// Pass the file to the read_todo function
 	tasks := task_collect(csvFile)
 	csvFile.Close()
-	exit := false
 
-	for !exit {
-		display_menu()
+	CLI(tasks)
+	/*
+		exit := false
 
-		option := 0
-		_, err := fmt.Scanf("%d", &option)
-		if err != nil {
-			fmt.Println("Invalid input. Please enter a number.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-			continue
-		}
+			for !exit {
+				display_menu()
 
-		switch option {
-		case 1:
-			tasks = task_write(tasks)
-		case 2:
-			task_display(tasks)
-		case 3:
+				option := 0
+				_, err := fmt.Scanf("%d", &option)
+				if err != nil {
+					fmt.Println("Invalid input. Please enter a number.")
+					// Clear input buffer
+					var discard string
+					fmt.Scanln(&discard)
+					continue
+				}
 
-			tasks = task_remove(tasks)
-		case 4:
-			task_save(tasks)
-			exit = true
-		default:
-			fmt.Println("Invalid option. Please choose a valid menu item.")
-		}
-	}
+				switch option {
+				case 1:
+					tasks = task_write(tasks)
+				case 2:
+					task_display(tasks)
+				case 3:
 
-	/* task_display(tasks)
-
-	tasks = task_write(tasks)
-
-	tasks = task_remove(tasks, 1)
-
-	_, err := csvFile.Seek(0, 0)
-	if err != nil {
-		log.Fatalf("failed to reset file pointer: %s", err)
-	}
-	*/
+					tasks = task_remove(tasks)
+				case 4:
+					task_save(tasks)
+					exit = true
+				default:
+					fmt.Println("Invalid option. Please choose a valid menu item.")
+				}
+			} */
 
 }
 
