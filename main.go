@@ -1,17 +1,277 @@
 package main
 
 import (
-	"bufio"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-type TodoList struct {
-	Task     string
-	Priority string
+const listHeight = 14
+
+var (
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
+type item struct {
+	title  string
+	action string
+}
+
+func (i item) FilterValue() string { return "" }
+
+type itemDelegate struct{}
+
+func (d itemDelegate) Height() int                             { return 1 }
+func (d itemDelegate) Spacing() int                            { return 0 }
+func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(item)
+	if !ok {
+		return
+	}
+
+	str := fmt.Sprintf("%d. %s", index+1, i.title)
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
+type model struct {
+	list            list.Model
+	table           table.Model
+	displayList     list.Model
+	removeList      list.Model
+	textInput       textinput.Model
+	tasks           [][]string
+	choice          string
+	addingTasks     bool
+	displayingTasks bool
+	removingTasks   bool
+	quitting        bool
+}
+
+func (m model) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.list.SetWidth(msg.Width)
+		m.removeList.SetWidth(msg.Width)
+		m.displayList.SetWidth(msg.Width)
+		m.table.SetWidth(msg.Width)
+		return m, nil
+
+	case tea.KeyMsg:
+		switch keypress := msg.String(); keypress {
+		case "q", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+
+		case "enter":
+			if m.addingTasks {
+				// Add the task and return to the main menu
+				task := m.textInput.Value()
+				if task != "" {
+					task = strings.TrimSpace(task)
+					m.tasks = append(m.tasks, []string{task})
+				}
+				m.addingTasks = false
+				m.textInput.SetValue("") // Clear input after adding
+				return m, nil
+			}
+
+			if m.removingTasks {
+				// Remove the selected task
+				index := m.removeList.Index()
+				if index >= 0 && index < len(m.tasks) {
+					m.tasks = append(m.tasks[:index], m.tasks[index+1:]...)
+
+					// Update the removeList to reflect the changes
+					var items []list.Item
+					for _, task := range m.tasks {
+						items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
+					}
+					m.removeList.SetItems(items)
+				}
+
+				m.removingTasks = false
+				m.choice = ""
+				return m, nil
+			}
+			if m.displayingTasks || m.removingTasks {
+				// Exit task display mode or remove mode and go back to the main menu
+				m.displayingTasks = false
+				m.removingTasks = false
+				m.choice = ""
+				return m, nil
+			}
+
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				m.choice = i.title
+				switch i.action {
+				case "add":
+					m.addingTasks = true
+					m.textInput.Focus()
+					return m, nil
+				case "display":
+					return m.startDisplayTasks(), nil
+				case "remove":
+					return m.startRemoveTasks(), nil
+				case "save_exit":
+					task_save(m.tasks)
+					m.quitting = true
+					return m, tea.Quit
+				}
+			}
+		}
+	}
+
+	if m.addingTasks {
+		m.textInput, cmd = m.textInput.Update(msg)
+	} else if m.removingTasks {
+		m.removeList, cmd = m.removeList.Update(msg)
+	} else if m.displayingTasks {
+		m.table, cmd = m.table.Update(msg)
+	} else {
+		m.list, cmd = m.list.Update(msg)
+	}
+	return m, cmd
+}
+
+func (m model) startDisplayTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 50},
+		}
+
+		var rows []table.Row
+		for id, task := range m.tasks {
+			rows = append(rows, table.Row{fmt.Sprintf("%d", id+1), strings.Join(task, ", ")})
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.table = t
+		m.displayingTasks = true
+		m.choice = ""
+	}
+	return m
+}
+
+func (m model) startRemoveTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		var items []list.Item
+		for _, task := range m.tasks {
+			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
+		}
+		m.removeList.SetItems(items)
+		m.removingTasks = true
+		m.choice = ""
+	}
+	return m
+}
+
+func (m model) View() string {
+	if m.addingTasks {
+		return fmt.Sprintf(
+			"Enter task:\n\n%s\n\n%s",
+			m.textInput.View(),
+			"(esc to cancel, enter to add)",
+		) + "\n"
+	}
+
+	if m.quitting {
+		task_save(m.tasks)
+		return quitTextStyle.Render("Bye bye")
+	}
+
+	if m.removingTasks {
+		return "\n" + m.removeList.View()
+	}
+
+	if m.displayingTasks {
+		return "\n" + m.table.View()
+	}
+
+	return "\n" + m.list.View()
+}
+
+func CLI(tasks_list [][]string) {
+	items := []list.Item{
+		item{title: "Add tasks", action: "add"},
+		item{title: "Display tasks", action: "display"},
+		item{title: "Remove tasks", action: "remove"},
+		item{title: "Save & Exit", action: "save_exit"},
+	}
+
+	const defaultWidth = 20
+
+	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
+	l.Title = "TODO_LIST"
+
+	textInput := textinput.New()
+	textInput.Placeholder = "Enter task"
+	textInput.Focus()
+	textInput.CharLimit = 156
+	textInput.Width = 20
+
+	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
+	displayList.Title = "DISPLAY_TASKS"
+
+	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
+	removeList.Title = "REMOVE_TASKS"
+
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+
+	l.Styles.PaginationStyle = paginationStyle
+	l.Styles.HelpStyle = helpStyle
+
+	m := model{
+		list:        l,
+		displayList: displayList,
+		removeList:  removeList,
+		textInput:   textInput,
+		tasks:       tasks_list,
+	}
+
+	if _, err := tea.NewProgram(m).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -33,160 +293,30 @@ func main() {
 			log.Fatalf("failed opening file: %s", err)
 		}
 		// Ensure the file is closed after reading
-		// defer a cool feature in Go, very nois
+		defer csvFile.Close()
 	}
 
 	// Pass the file to the read_todo function
 	tasks := task_collect(csvFile)
-	csvFile.Close()
-	exit := false
 
-	for !exit {
-		display_menu()
-
-		option := 0
-		_, err := fmt.Scanf("%d", &option)
-		if err != nil {
-			fmt.Println("Invalid input. Please enter a number.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-			continue
-		}
-
-		switch option {
-		case 1:
-			tasks = task_write(tasks)
-		case 2:
-			task_display(tasks)
-		case 3:
-
-			tasks = task_remove(tasks)
-		case 4:
-			task_save(tasks)
-			exit = true
-		default:
-			fmt.Println("Invalid option. Please choose a valid menu item.")
-		}
-	}
-
-	/* task_display(tasks)
-
-	tasks = task_write(tasks)
-
-	tasks = task_remove(tasks, 1)
-
-	_, err := csvFile.Seek(0, 0)
-	if err != nil {
-		log.Fatalf("failed to reset file pointer: %s", err)
-	}
-	*/
-
+	CLI(tasks)
 }
 
 // Function that accepts the file as an argument and reads data from file argument
-func task_display(tasks [][]string) {
-	num := 0
-	for _, record := range tasks {
-		num++
-		fmt.Println(num, record)
-
-	}
-
-}
-
-// Function that accepts the file as an argument and writes data to the file argument
-func task_write(tasks [][]string) [][]string {
-
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		var task, priority string
-
-		// Get task input from the user
-		fmt.Println("Enter task: ")
-		task, _ = reader.ReadString('\n')
-		task = strings.TrimSpace(task)
-
-		// Get priority input from the user
-		fmt.Println("Enter priority: ")
-		priority, _ = reader.ReadString('\n')
-		priority = strings.TrimSpace(priority)
-
-		// Convert the struct fields to a slice of strings
-		record := []string{task, priority}
-		tasks = append(tasks, record)
-
-		// Ask if the user wants to add another task
-		fmt.Println("Do you want to add another task? (yes/no)")
-		answer, _ := reader.ReadString('\n')
-		answer = strings.TrimSpace(answer)
-
-		if strings.ToLower(answer) != "yes" {
-			break
-		}
-	}
-
-	return tasks
-
-}
-
-func task_remove(tasks [][]string) [][]string {
-
-	tasks_remove := 0
-
-	for tasks_remove == 0 {
-
-		fmt.Println("Which task do you want to remove?")
-		task_display(tasks)
-		fmt.Println(len(tasks)+1, "to go back")
-		_, err := fmt.Scanf("%d", &tasks_remove)
-		tasks_remove -= 1
-		if err != nil {
-			fmt.Println("Invalid input. Please enter a number.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-
-		}
-		if tasks_remove+2 >= len(tasks) {
-
-			break
-		}
-		if tasks_remove+3 >= len(tasks) {
-			fmt.Println("Invalid input. Please enter a valid task.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-			continue
-
-		}
-
-	}
-
-	if tasks_remove < 0 || tasks_remove >= len(tasks) {
-		fmt.Println("Invalid index")
-		return tasks
-	}
-
-	return append(tasks[:tasks_remove], tasks[tasks_remove+1:]...)
-}
-
 func task_collect(file *os.File) [][]string {
-
 	reader := csv.NewReader(file)
 
 	// Read all the CSV data into a slice of tasks
 	tasks, err := reader.ReadAll()
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error reading CSV file:", err)
+		return nil
 	}
 
 	return tasks
 }
 
 func task_save(tasks [][]string) {
-
 	csvFile, err := os.OpenFile("todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
@@ -198,19 +328,6 @@ func task_save(tasks [][]string) {
 
 	err = writer.WriteAll(tasks)
 	if err != nil {
-		fmt.Println("error writing CSV file: %w", err)
+		fmt.Printf("error writing CSV file: %v", err)
 	}
-
-}
-
-func display_menu() {
-
-	fmt.Println("----------TODO_LIST-----------")
-	fmt.Println("Options:----------------------")
-	fmt.Println("1. Add tasks------------------")
-	fmt.Println("2. Display tasks--------------")
-	fmt.Println("3. Remove tasks---------------")
-	fmt.Println("4. Save & Exit----------------")
-	fmt.Println("------------------------------")
-
 }
