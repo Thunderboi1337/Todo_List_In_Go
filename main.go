@@ -1,4 +1,4 @@
-package main
+/* package main
 
 import (
 	"bufio"
@@ -175,20 +175,4 @@ func task_save(tasks [][]string) {
 	}
 
 }
-
-func display_menu() {
-
-	fmt.Println("----------TODO_LIST-----------")
-	fmt.Println("Options:----------------------")
-	fmt.Println("1. Add tasks------------------")
-	fmt.Println("2. Display tasks--------------")
-	fmt.Println("3. Remove tasks---------------")
-	fmt.Println("4. Save & Exit----------------")
-	fmt.Println("------------------------------")
-
-}
-
-func task_get() [][]string {
-
-	return task
-}
+ */
