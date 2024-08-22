@@ -28,16 +28,17 @@ func main() {
 		log.Fatalf("error checking file: %s", err)
 	} else {
 		// File exists, open it
-		csvFile, err = os.OpenFile("todo_list.csv", os.O_RDWR, 0644)
+		csvFile, err = os.OpenFile("todo_list.csv", os.O_RDONLY, 0644)
 		if err != nil {
 			log.Fatalf("failed opening file: %s", err)
 		}
-		defer csvFile.Close() // Ensure the file is closed after reading
+		// Ensure the file is closed after reading
 		// defer a cool feature in Go, very nois
 	}
 
 	// Pass the file to the read_todo function
 	tasks := task_collect(csvFile)
+	csvFile.Close()
 	exit := false
 
 	for !exit {
@@ -60,9 +61,9 @@ func main() {
 			task_display(tasks)
 		case 3:
 
-			tasks = task_remove(tasks, 1)
+			tasks = task_remove(tasks)
 		case 4:
-			task_save(csvFile, tasks)
+			task_save(tasks)
 			exit = true
 		default:
 			fmt.Println("Invalid option. Please choose a valid menu item.")
@@ -85,9 +86,11 @@ func main() {
 
 // Function that accepts the file as an argument and reads data from file argument
 func task_display(tasks [][]string) {
-
+	num := 0
 	for _, record := range tasks {
-		fmt.Println(record)
+		num++
+		fmt.Println(num, record)
+
 	}
 
 }
@@ -128,7 +131,38 @@ func task_write(tasks [][]string) [][]string {
 
 }
 
-func task_remove(tasks [][]string, tasks_remove int) [][]string {
+func task_remove(tasks [][]string) [][]string {
+
+	tasks_remove := 0
+
+	for tasks_remove == 0 {
+
+		fmt.Println("Which task do you want to remove?")
+		task_display(tasks)
+		fmt.Println(len(tasks)+1, "to go back")
+		_, err := fmt.Scanf("%d", &tasks_remove)
+		tasks_remove -= 1
+		if err != nil {
+			fmt.Println("Invalid input. Please enter a number.")
+			// Clear input buffer
+			var discard string
+			fmt.Scanln(&discard)
+
+		}
+		if tasks_remove+2 >= len(tasks) {
+
+			break
+		}
+		if tasks_remove+3 >= len(tasks) {
+			fmt.Println("Invalid input. Please enter a valid task.")
+			// Clear input buffer
+			var discard string
+			fmt.Scanln(&discard)
+			continue
+
+		}
+
+	}
 
 	if tasks_remove < 0 || tasks_remove >= len(tasks) {
 		fmt.Println("Invalid index")
@@ -151,12 +185,18 @@ func task_collect(file *os.File) [][]string {
 	return tasks
 }
 
-func task_save(file *os.File, tasks [][]string) {
+func task_save(tasks [][]string) {
 
-	writer := csv.NewWriter(file)
+	csvFile, err := os.OpenFile("todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatalf("failed opening file: %s", err)
+	}
+	defer csvFile.Close()
+
+	writer := csv.NewWriter(csvFile)
 	defer writer.Flush()
 
-	err := writer.WriteAll(tasks)
+	err = writer.WriteAll(tasks)
 	if err != nil {
 		fmt.Println("error writing CSV file: %w", err)
 	}
