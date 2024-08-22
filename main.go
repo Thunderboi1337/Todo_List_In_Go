@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -56,7 +57,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 type model struct {
 	list            list.Model
-	addList         textinput.Model
+	table           table.Model
 	displayList     list.Model
 	removeList      list.Model
 	textInput       textinput.Model
@@ -80,6 +81,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list.SetWidth(msg.Width)
 		m.removeList.SetWidth(msg.Width)
 		m.displayList.SetWidth(msg.Width)
+		m.table.SetWidth(msg.Width)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -93,6 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Add the task and return to the main menu
 				task := m.textInput.Value()
 				if task != "" {
+					task = strings.TrimSpace(task)
 					m.tasks = append(m.tasks, []string{task})
 				}
 				m.addingTasks = false
@@ -152,7 +155,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	} else if m.removingTasks {
 		m.removeList, cmd = m.removeList.Update(msg)
 	} else if m.displayingTasks {
-		m.displayList, cmd = m.displayList.Update(msg)
+		m.table, cmd = m.table.Update(msg)
 	} else {
 		m.list, cmd = m.list.Update(msg)
 	}
@@ -163,11 +166,23 @@ func (m model) startDisplayTasks() model {
 	if len(m.tasks) == 0 {
 		m.choice = "No tasks available."
 	} else {
-		var items []list.Item
-		for _, task := range m.tasks {
-			items = append(items, item{title: strings.Join(task, ", "), action: "display"})
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 50},
 		}
-		m.displayList.SetItems(items)
+
+		var rows []table.Row
+		for id, task := range m.tasks {
+			rows = append(rows, table.Row{fmt.Sprintf("%d", id+1), strings.Join(task, ", ")})
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.table = t
 		m.displayingTasks = true
 		m.choice = ""
 	}
@@ -188,8 +203,8 @@ func (m model) startRemoveTasks() model {
 	}
 	return m
 }
-func (m model) View() string {
 
+func (m model) View() string {
 	if m.addingTasks {
 		return fmt.Sprintf(
 			"Enter task:\n\n%s\n\n%s",
@@ -208,7 +223,7 @@ func (m model) View() string {
 	}
 
 	if m.displayingTasks {
-		return "\n" + m.displayList.View()
+		return "\n" + m.table.View()
 	}
 
 	return "\n" + m.list.View()
@@ -226,12 +241,6 @@ func CLI(tasks_list [][]string) {
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
-
-	addList := textinput.New()
-	addList.Placeholder = "ADD_TASKS"
-	addList.Focus()
-	addList.CharLimit = 156
-	addList.Width = 20
 
 	textInput := textinput.New()
 	textInput.Placeholder = "Enter task"
@@ -253,7 +262,6 @@ func CLI(tasks_list [][]string) {
 
 	m := model{
 		list:        l,
-		addList:     addList,
 		displayList: displayList,
 		removeList:  removeList,
 		textInput:   textInput,
