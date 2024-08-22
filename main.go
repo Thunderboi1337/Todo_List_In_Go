@@ -123,36 +123,17 @@ func task_write(tasks [][]string) [][]string {
 
 }
 
-func task_remove(tasks [][]string) [][]string {
+func task_remove(tasks [][]string, tasks_remove int) [][]string {
 
-	tasks_remove := 0
-
-	for tasks_remove == 0 {
-
-		fmt.Println("Which task do you want to remove?")
-		task_display(tasks)
-		fmt.Println(len(tasks)+1, "to go back")
-		_, err := fmt.Scanf("%d", &tasks_remove)
-		tasks_remove -= 1
-		if err != nil {
-			fmt.Println("Invalid input. Please enter a number.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-
-		}
-		if tasks_remove+2 >= len(tasks) {
-
-			break
-		}
-		if tasks_remove+3 >= len(tasks) {
-			fmt.Println("Invalid input. Please enter a valid task.")
-			// Clear input buffer
-			var discard string
-			fmt.Scanln(&discard)
-			continue
-
-		}
+	fmt.Println("Which task do you want to remove?")
+	task_display(tasks)
+	fmt.Println(len(tasks)+1, "to go back")
+	_, err := fmt.Scanf("%d", &tasks_remove)
+	if err != nil {
+		fmt.Println("Invalid input. Please enter a number.")
+		// Clear input buffer
+		var discard string
+		fmt.Scanln(&discard)
 
 	}
 
@@ -205,4 +186,9 @@ func display_menu() {
 	fmt.Println("4. Save & Exit----------------")
 	fmt.Println("------------------------------")
 
+}
+
+func task_get() [][]string {
+
+	return task
 }

@@ -14,7 +14,6 @@ import (
 const listHeight = 14
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
@@ -54,10 +53,13 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 type model struct {
 	list            list.Model
-	choice          string
-	quitting        bool
+	displayList     list.Model
+	removeList      list.Model
 	tasks           [][]string
+	choice          string
 	displayingTasks bool
+	removingTasks   bool
+	quitting        bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -68,6 +70,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
+		m.removeList.SetWidth(msg.Width)
+		m.displayList.SetWidth(msg.Width)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -77,9 +81,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			if m.displayingTasks {
-				// Exit task display mode and go back to the main menu
+			if m.displayingTasks || m.removingTasks {
+				// Exit task display mode or remove mode and go back to the main menu
 				m.displayingTasks = false
+				m.removingTasks = false
+				m.choice = ""
+				return m, nil
+			}
+
+			if m.removingTasks {
+				// Remove the selected task
+
+				index := m.removeList.Index()
+
+				task_remove(m.tasks, index)
+
+				if index >= 0 && index < len(m.tasks) {
+					m.tasks = append(m.tasks[:index], m.tasks[index+1:]...)
+				}
+
+				m.removingTasks = false
 				m.choice = ""
 				return m, nil
 			}
@@ -91,9 +112,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "add":
 					// Here you can add task logic
 				case "display":
-					return m.displayTasks(), nil
+					return m.startDisplayTasks(), nil
 				case "remove":
-					return m.removeTasks(), nil
+					return m.startRemoveTasks(), nil
 				case "save_exit":
 					m.quitting = true
 					return m, tea.Quit
@@ -103,37 +124,43 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
+	if m.removingTasks {
+		m.removeList, cmd = m.removeList.Update(msg)
+	} else if m.displayingTasks {
+		m.displayList, cmd = m.displayList.Update(msg)
+	} else {
+		m.list, cmd = m.list.Update(msg)
+	}
 	return m, cmd
 }
 
-func (m model) displayTasks() model {
-
+func (m model) startDisplayTasks() model {
 	if len(m.tasks) == 0 {
 		m.choice = "No tasks available."
 	} else {
-		var taskStrings []string
+		var items []list.Item
 		for _, task := range m.tasks {
-
-			taskStrings = append(taskStrings, strings.Join(task, ", "))
+			items = append(items, item{title: strings.Join(task, ", "), action: "display"})
 		}
-		m.choice = "Tasks:\n" + strings.Join(taskStrings, "\n")
+		m.displayList.SetItems(items)
+		m.displayingTasks = true
+		m.choice = ""
 	}
-	m.displayingTasks = true
 	return m
 }
 
-func (m model) removeTasks() model {
+func (m model) startRemoveTasks() model {
 	if len(m.tasks) == 0 {
 		m.choice = "No tasks available."
 	} else {
-		var taskStrings []string
+		var items []list.Item
 		for _, task := range m.tasks {
-			taskStrings = append(taskStrings, strings.Join(task, ", "))
+			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
 		}
-		m.choice = "Tasks:\n" + strings.Join(taskStrings, "\n")
+		m.removeList.SetItems(items)
+		m.removingTasks = true
+		m.choice = ""
 	}
-	m.displayingTasks = true
 	return m
 }
 
@@ -145,6 +172,15 @@ func (m model) View() string {
 	if m.quitting {
 		return quitTextStyle.Render("Bye bye")
 	}
+
+	if m.removingTasks {
+		return "\n" + m.removeList.View()
+	}
+
+	if m.displayingTasks {
+		return "\n" + m.displayList.View()
+	}
+
 	return "\n" + m.list.View()
 }
 
@@ -161,16 +197,23 @@ func CLI(tasks_list [][]string) {
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
 
+	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
+	displayList.Title = "DISPLAY_TASKS"
+
+	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
+	removeList.Title = "REMOVE_TASKS"
+
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 
-	l.Styles.Title = titleStyle
 	l.Styles.PaginationStyle = paginationStyle
 	l.Styles.HelpStyle = helpStyle
 
 	m := model{
-		list:  l,
-		tasks: tasks_list, // Example tasks
+		list:        l,
+		displayList: displayList,
+		removeList:  removeList,
+		tasks:       tasks_list,
 	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
