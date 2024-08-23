@@ -168,12 +168,21 @@ func (m model) startDisplayTasks() model {
 	} else {
 		columns := []table.Column{
 			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 50},
+			{Title: "Task", Width: 40},
+			{Title: "Priority", Width: 25},
 		}
 
 		var rows []table.Row
-		for id, task := range m.tasks {
-			rows = append(rows, table.Row{fmt.Sprintf("%d", id+1), strings.Join(task, ", ")})
+
+		for id, taskList := range m.tasks {
+
+			row := []string{
+				fmt.Sprintf("%d", id), // Task ID
+				taskList[0],           // Task Name
+				taskList[1],           // Priority
+			}
+
+			rows = append(rows, row)
 		}
 
 		t := table.New(
@@ -186,6 +195,7 @@ func (m model) startDisplayTasks() model {
 		m.displayingTasks = true
 		m.choice = ""
 	}
+
 	return m
 }
 
@@ -215,7 +225,7 @@ func (m model) View() string {
 
 	if m.quitting {
 		task_save(m.tasks)
-		return quitTextStyle.Render("Bye bye")
+		return quitTextStyle.Render("")
 	}
 
 	if m.removingTasks {
@@ -299,7 +309,10 @@ func main() {
 	// Pass the file to the read_todo function
 	tasks := task_collect(csvFile)
 
+	//printer(tasks)
+
 	CLI(tasks)
+
 }
 
 // Function that accepts the file as an argument and reads data from file argument
@@ -331,3 +344,13 @@ func task_save(tasks [][]string) {
 		fmt.Printf("error writing CSV file: %v", err)
 	}
 }
+
+/* func printer(tasks [][]string) {
+
+	for i, row := range tasks {
+		for j, task := range row {
+			fmt.Printf("tasks[%d][%d] = %s\n", i, j, task)
+		}
+	}
+
+} */
