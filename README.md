@@ -1,6 +1,6 @@
-# Todo List in Go
-****Working progress****
-- A simple command-line Todo List application built in Go, utilizing [Bubble Tea](https://github.com/charmbracelet/bubbletea) for an interactive text-based user interface. This project was created as a learning exercise to get familiar with Go and CSV data handling.
+# Todo List in Go 
+**** Working progress ****
+A simple command-line Todo List application built in Go, utilizing [Bubble Tea](https://github.com/charmbracelet/bubbletea) for an interactive text-based user interface. This project was created as a learning exercise to get familiar with Go and CSV data handling.
 
 ## Features
 
