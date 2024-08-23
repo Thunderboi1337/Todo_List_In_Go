@@ -16,6 +16,28 @@ import (
 )
 
 const listHeight = 14
+const defaultWidth = 20
+
+type item struct {
+	title  string
+	action string
+}
+
+type model struct {
+	list            list.Model
+	taskInput       textinput.Model
+	prioInput       textinput.Model
+	table           table.Model
+	displayList     list.Model
+	removeTable     table.Model
+	removeList      list.Model
+	tasks           [][]string
+	choice          string
+	addingTasks     bool
+	displayingTasks bool
+	removingTasks   bool
+	quitting        bool
+}
 
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
@@ -23,12 +45,17 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-)
 
-type item struct {
-	title  string
-	action string
-}
+	addInstructionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).PaddingTop(1)
+	addHeadingStyle     = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("230")).
+				Background(lipgloss.Color("62")).
+				MarginLeft(2).
+				MarginTop(1).
+				PaddingLeft(1).
+				PaddingRight(1).
+				Align(lipgloss.Left)
+)
 
 func (i item) FilterValue() string { return "" }
 
@@ -55,18 +82,83 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprint(w, fn(str))
 }
 
-type model struct {
-	list            list.Model
-	table           table.Model
-	displayList     list.Model
-	removeList      list.Model
-	textInput       textinput.Model
-	tasks           [][]string
-	choice          string
-	addingTasks     bool
-	displayingTasks bool
-	removingTasks   bool
-	quitting        bool
+func (m model) startAddTasks() model {
+	m.addingTasks = true
+	m.taskInput.Placeholder = "Enter task"
+	m.taskInput.Focus()
+	return m
+}
+
+func (m model) startDisplayTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 40},
+			{Title: "Priority", Width: 25},
+		}
+
+		var rows []table.Row
+
+		for id, taskList := range m.tasks {
+
+			row := []string{
+				fmt.Sprintf("%d", id+1), // Task ID
+				taskList[0],             // Task Name
+				taskList[1],             // Priority
+			}
+
+			rows = append(rows, row)
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.table = t
+		m.displayingTasks = true
+		m.choice = ""
+	}
+
+	return m
+}
+
+func (m model) startRemoveTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 40},
+			{Title: "Priority", Width: 25},
+		}
+
+		var rows []table.Row
+
+		for id, taskList := range m.tasks {
+			row := []string{
+				fmt.Sprintf("%d", id+1), // Task ID
+				taskList[0],             // Task Name
+				taskList[1],             // Priority
+			}
+			rows = append(rows, row)
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.removeTable = t
+		m.removingTasks = true
+		m.choice = ""
+	}
+
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -82,29 +174,55 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.removeList.SetWidth(msg.Width)
 		m.displayList.SetWidth(msg.Width)
 		m.table.SetWidth(msg.Width)
+		m.removeTable.SetWidth(msg.Width) // Add this line
 		return m, nil
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "q", "ctrl+c":
+		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+		case "esc":
+			m.addingTasks = false
+			m.displayingTasks = false
+			m.removingTasks = false
+			m.taskInput.SetValue("")
+			m.prioInput.SetValue("")
+			return m, nil
 
 		case "enter":
 			if m.addingTasks {
-				// Add the task and return to the main menu
-				task := m.textInput.Value()
-				if task != "" {
-					task = strings.TrimSpace(task)
-					m.tasks = append(m.tasks, []string{task})
-				}
-				m.addingTasks = false
-				m.textInput.SetValue("") // Clear input after adding
-				return m, nil
-			}
+				if m.taskInput.Focused() {
+					task := m.taskInput.Value()
+					if task != "" {
+						m.taskInput.Blur()
+						m.prioInput.Focus()
+						return m, nil
+					} else {
+						m.addingTasks = false
+						return m, nil
+					}
 
-			if m.removingTasks {
-				// Remove the selected task
+				} else if m.prioInput.Focused() {
+					prio := m.prioInput.Value()
+					if prio != "" {
+						m.tasks = append(m.tasks, []string{m.taskInput.Value(), prio})
+						m.prioInput.Blur()
+						m.taskInput.SetValue("")
+						m.prioInput.SetValue("")
+						m.addingTasks = false
+						return m, nil
+					} else {
+						m.tasks = append(m.tasks, []string{m.taskInput.Value(), prio})
+						m.taskInput.SetValue("")
+						m.prioInput.SetValue("")
+						m.addingTasks = false
+						return m, nil
+					}
+				}
+			} else if m.removingTasks {
+				// Remove the selected task from the table
+
 				index := m.removeList.Index()
 				if index >= 0 && index < len(m.tasks) {
 					m.tasks = append(m.tasks[:index], m.tasks[index+1:]...)
@@ -120,23 +238,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.removingTasks = false
 				m.choice = ""
 				return m, nil
-			}
-			if m.displayingTasks || m.removingTasks {
-				// Exit task display mode or remove mode and go back to the main menu
+			} else if m.displayingTasks {
+				// Exit task display mode and go back to the main menu
 				m.displayingTasks = false
-				m.removingTasks = false
 				m.choice = ""
 				return m, nil
 			}
 
+			// Handle the main menu selection
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.choice = i.title
 				switch i.action {
 				case "add":
-					m.addingTasks = true
-					m.textInput.Focus()
-					return m, nil
+					return m.startAddTasks(), nil
 				case "display":
 					return m.startDisplayTasks(), nil
 				case "remove":
@@ -150,10 +265,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle updates based on the current state
 	if m.addingTasks {
-		m.textInput, cmd = m.textInput.Update(msg)
+		if m.taskInput.Focused() {
+			m.taskInput, cmd = m.taskInput.Update(msg)
+		} else if m.prioInput.Focused() {
+			m.prioInput, cmd = m.prioInput.Update(msg)
+		}
 	} else if m.removingTasks {
-		m.removeList, cmd = m.removeList.Update(msg)
+		m.removeTable, cmd = m.removeTable.Update(msg) // Update this line
 	} else if m.displayingTasks {
 		m.table, cmd = m.table.Update(msg)
 	} else {
@@ -162,68 +282,44 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) startDisplayTasks() model {
-	if len(m.tasks) == 0 {
-		m.choice = "No tasks available."
-	} else {
-		columns := []table.Column{
-			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 50},
-		}
-
-		var rows []table.Row
-		for id, task := range m.tasks {
-			rows = append(rows, table.Row{fmt.Sprintf("%d", id+1), strings.Join(task, ", ")})
-		}
-
-		t := table.New(
-			table.WithColumns(columns),
-			table.WithRows(rows),
-			table.WithFocused(true),
-		)
-
-		m.table = t
-		m.displayingTasks = true
-		m.choice = ""
-	}
-	return m
-}
-
-func (m model) startRemoveTasks() model {
-	if len(m.tasks) == 0 {
-		m.choice = "No tasks available."
-	} else {
-		var items []list.Item
-		for _, task := range m.tasks {
-			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
-		}
-		m.removeList.SetItems(items)
-		m.removingTasks = true
-		m.choice = ""
-	}
-	return m
-}
-
 func (m model) View() string {
 	if m.addingTasks {
-		return fmt.Sprintf(
-			"Enter task:\n\n%s\n\n%s",
-			m.textInput.View(),
-			"(esc to cancel, enter to add)",
-		) + "\n"
+		if m.taskInput.Focused() {
+			return fmt.Sprintf(
+				"%s\n\n%s\n\n%s",
+				addHeadingStyle.Render("ADD_TASK"),
+				m.taskInput.View(),
+				addInstructionStyle.Render("(esc to cancel, enter to next)"),
+			) + "\n"
+		} else if m.prioInput.Focused() {
+			return fmt.Sprintf(
+				"%s\n\n%s\n\n%s",
+				addHeadingStyle.Render("ADD_TASK"),
+				m.prioInput.View(),
+				addInstructionStyle.Render("(esc to cancel, enter to add)"),
+			) + "\n"
+		}
 	}
 
 	if m.quitting {
 		task_save(m.tasks)
-		return quitTextStyle.Render("Bye bye")
+		return quitTextStyle.Render("")
 	}
 
 	if m.removingTasks {
-		return "\n" + m.removeList.View()
+		return fmt.Sprintf(
+			"\n%s\n\n%s",
+			addHeadingStyle.Render("REMOVE_TASKS"),
+			m.removeTable.View(),
+		)
 	}
 
 	if m.displayingTasks {
-		return "\n" + m.table.View()
+		return fmt.Sprintf(
+			"\n%s\n\n%s",
+			addHeadingStyle.Render("DISPLAY_TASKS"),
+			m.table.View(),
+		)
 	}
 
 	return "\n" + m.list.View()
@@ -237,16 +333,22 @@ func CLI(tasks_list [][]string) {
 		item{title: "Save & Exit", action: "save_exit"},
 	}
 
-	const defaultWidth = 20
-
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
+	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
+	l.KeyMap.Filter.Unbind()
 
-	textInput := textinput.New()
-	textInput.Placeholder = "Enter task"
-	textInput.Focus()
-	textInput.CharLimit = 156
-	textInput.Width = 20
+	taskInput := textinput.New()
+	taskInput.Placeholder = "Enter task"
+	taskInput.Focus()
+	taskInput.CharLimit = 156
+	taskInput.Width = 20
+
+	prioInput := textinput.New()
+	prioInput.Placeholder = "Enter priority"
+	prioInput.Focus()
+	prioInput.CharLimit = 156
+	prioInput.Width = 20
 
 	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	displayList.Title = "DISPLAY_TASKS"
@@ -254,17 +356,12 @@ func CLI(tasks_list [][]string) {
 	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	removeList.Title = "REMOVE_TASKS"
 
-	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
-
-	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
-
 	m := model{
 		list:        l,
 		displayList: displayList,
 		removeList:  removeList,
-		textInput:   textInput,
+		taskInput:   taskInput,
+		prioInput:   prioInput,
 		tasks:       tasks_list,
 	}
 
@@ -272,34 +369,6 @@ func CLI(tasks_list [][]string) {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-}
-
-func main() {
-	var csvFile *os.File
-
-	if _, err := os.Stat("todo_list.csv"); os.IsNotExist(err) {
-		// File does not exist, create it
-		csvFile, err = os.Create("todo_list.csv")
-		if err != nil {
-			log.Fatalf("failed creating file: %s", err)
-		}
-		defer csvFile.Close() // Ensure the file is closed after creation
-	} else if err != nil {
-		log.Fatalf("error checking file: %s", err)
-	} else {
-		// File exists, open it
-		csvFile, err = os.OpenFile("todo_list.csv", os.O_RDONLY, 0644)
-		if err != nil {
-			log.Fatalf("failed opening file: %s", err)
-		}
-		// Ensure the file is closed after reading
-		defer csvFile.Close()
-	}
-
-	// Pass the file to the read_todo function
-	tasks := task_collect(csvFile)
-
-	CLI(tasks)
 }
 
 // Function that accepts the file as an argument and reads data from file argument
@@ -317,7 +386,7 @@ func task_collect(file *os.File) [][]string {
 }
 
 func task_save(tasks [][]string) {
-	csvFile, err := os.OpenFile("todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	csvFile, err := os.OpenFile("csv_data/todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
 	}
@@ -330,4 +399,33 @@ func task_save(tasks [][]string) {
 	if err != nil {
 		fmt.Printf("error writing CSV file: %v", err)
 	}
+}
+
+func main() {
+	var csvFile *os.File
+
+	if _, err := os.Stat("csv_data/todo_list.csv"); os.IsNotExist(err) {
+		// File does not exist, create it
+		csvFile, err = os.Create("csv_data/todo_list.csv")
+		if err != nil {
+			log.Fatalf("failed creating file: %s", err)
+		}
+		defer csvFile.Close() // Ensure the file is closed after creation
+	} else if err != nil {
+		log.Fatalf("error checking file: %s", err)
+	} else {
+		// File exists, open it
+		csvFile, err = os.OpenFile("csv_data/todo_list.csv", os.O_RDONLY, 0644)
+		if err != nil {
+			log.Fatalf("failed opening file: %s", err)
+		}
+		// Ensure the file is closed after reading
+		defer csvFile.Close()
+	}
+
+	// Pass the file to the read_todo function
+	tasks := task_collect(csvFile)
+
+	CLI(tasks)
+
 }
