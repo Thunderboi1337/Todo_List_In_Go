@@ -24,6 +24,20 @@ var (
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+
+	addHeadingStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("205")).
+			Background(lipgloss.Color("57")).
+			Italic(true).
+			Underline(true).
+			Align(lipgloss.Center).
+			Padding(1, 0, 1, 0).
+			Width(50)
+
+	addInstructionStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("244")).
+				PaddingTop(1)
 )
 
 type item struct {
@@ -69,6 +83,65 @@ type model struct {
 	displayingTasks bool
 	removingTasks   bool
 	quitting        bool
+}
+
+func (m model) startAddTasks() model {
+	m.addingTasks = true
+	m.taskInput.Placeholder = "Enter task"
+	m.taskInput.Focus()
+	return m
+}
+
+func (m model) startDisplayTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 40},
+			{Title: "Priority", Width: 25},
+		}
+
+		var rows []table.Row
+
+		for id, taskList := range m.tasks {
+
+			row := []string{
+				fmt.Sprintf("%d", id+1), // Task ID
+				taskList[0],             // Task Name
+				taskList[1],             // Priority
+			}
+
+			rows = append(rows, row)
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.table = t
+		m.displayingTasks = true
+		m.choice = ""
+	}
+
+	return m
+}
+
+func (m model) startRemoveTasks() model {
+	if len(m.tasks) == 0 {
+		m.choice = "No tasks available."
+	} else {
+		var items []list.Item
+		for _, task := range m.tasks {
+			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
+		}
+		m.removeList.SetItems(items)
+		m.removingTasks = true
+		m.choice = ""
+	}
+	return m
 }
 
 func (m model) Init() tea.Cmd {
@@ -190,71 +263,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) startAddTasks() model {
-	m.addingTasks = true
-	m.taskInput.Placeholder = "Enter task"
-	m.taskInput.Focus()
-	return m
-}
-
-func (m model) startDisplayTasks() model {
-	if len(m.tasks) == 0 {
-		m.choice = "No tasks available."
-	} else {
-		columns := []table.Column{
-			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 40},
-			{Title: "Priority", Width: 25},
-		}
-
-		var rows []table.Row
-
-		for id, taskList := range m.tasks {
-
-			row := []string{
-				fmt.Sprintf("%d", id+1), // Task ID
-				taskList[0],             // Task Name
-				taskList[1],             // Priority
-			}
-
-			rows = append(rows, row)
-		}
-
-		t := table.New(
-			table.WithColumns(columns),
-			table.WithRows(rows),
-			table.WithFocused(true),
-		)
-
-		m.table = t
-		m.displayingTasks = true
-		m.choice = ""
-	}
-
-	return m
-}
-
-func (m model) startRemoveTasks() model {
-	if len(m.tasks) == 0 {
-		m.choice = "No tasks available."
-	} else {
-		var items []list.Item
-		for _, task := range m.tasks {
-			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
-		}
-		m.removeList.SetItems(items)
-		m.removingTasks = true
-		m.choice = ""
-	}
-	return m
-}
-
 func (m model) View() string {
+	// View logic
 	if m.addingTasks {
 		if m.taskInput.Focused() {
-			return fmt.Sprintf("Enter task:\n\n%s\n\n%s", m.taskInput.View(), "(esc to cancel, enter to next)") + "\n"
+			return fmt.Sprintf(
+				"%s\n\n%s\n\n%s",
+				addHeadingStyle.Render("Add task:"),
+				m.taskInput.View(),
+				addInstructionStyle.Render("(esc to cancel, enter to next)"),
+			) + "\n"
 		} else if m.prioInput.Focused() {
-			return fmt.Sprintf("Enter priority:\n\n%s\n\n%s", m.prioInput.View(), "(esc to cancel, enter to add)") + "\n"
+			return fmt.Sprintf(
+				"%s\n\n%s\n\n%s",
+				addInstructionStyle.Render("Add task:"),
+				m.prioInput.View(),
+				addInstructionStyle.Render("(esc to cancel, enter to add)"),
+			) + "\n"
 		}
 	}
 
@@ -286,6 +311,8 @@ func CLI(tasks_list [][]string) {
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
+	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
+	l.KeyMap.Filter.Unbind()
 
 	taskInput := textinput.New()
 	taskInput.Placeholder = "Enter task"
@@ -304,18 +331,6 @@ func CLI(tasks_list [][]string) {
 
 	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	removeList.Title = "REMOVE_TASKS"
-
-	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
-
-	/* = func() []key.Binding {
-		return []key.Binding{
-			key.NewBinding(key.WithKeys("↑", "y"), key.WithHelp("↑/y", "up")),
-			key.NewBinding(key.WithKeys("↓", "j"), key.WithHelp("↓/j", "down")),
-			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-		}
-
-	}
-	*/
 
 	displayList.Styles.PaginationStyle = paginationStyle
 	displayList.Styles.HelpStyle = helpStyle
