@@ -45,9 +45,11 @@ Upon running the application, you can interact with it using the following comma
 
 Here are some GIFs demonstrating how to use the application:
 
-![Add and Complete Task](https://media.giphy.com/media/example1/giphy.gif)
+![Add and Complete Task](screenshots/Todolist.GIF)
 
-![View and Delete Task](https://media.giphy.com/media/example2/giphy.gif)
+![Display Task](screenshots/TodolistDisplay.GIF)
+
+![View and Delete Task](screenshots/TodolistRemove.GIF)
 
 ## Code Structure
 
