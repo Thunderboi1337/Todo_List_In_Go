@@ -14,8 +14,8 @@ To get started with the project:
 
 1. **Clone the repository**:
     ```sh
-    git clone https://github.com/yourusername/todo_list_go.git
-    cd todo_list_go
+    git clone https://github.com/thunderboi1337/Todo_List_In_Go.git
+    cd Todo_List_In_Go
     ```
 
 2. **Install dependencies**:
@@ -25,12 +25,12 @@ To get started with the project:
 
 3. **Build the project**:
     ```sh
-    go build -o todo_list
+    go build main.go
     ```
 
 4. **Run the application**:
     ```sh
-    ./todo_list
+    ./main
     ```
 
 ## Usage
