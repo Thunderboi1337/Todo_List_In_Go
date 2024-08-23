@@ -66,5 +66,5 @@ Here are some GIFs demonstrating how to use the application:
 
 ## License
 
-Do what you wwant, don't care :*
+Do what you want with this, anybody is allowed to use it :*
 
