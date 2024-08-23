@@ -57,10 +57,11 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 
 type model struct {
 	list            list.Model
+	taskInput       textinput.Model
+	prioInput       textinput.Model
 	table           table.Model
 	displayList     list.Model
 	removeList      list.Model
-	textInput       textinput.Model
 	tasks           [][]string
 	choice          string
 	addingTasks     bool
@@ -92,18 +93,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.addingTasks {
-				// Add the task and return to the main menu
-				task := m.textInput.Value()
-				if task != "" {
-					task = strings.TrimSpace(task)
-					m.tasks = append(m.tasks, []string{task})
+				if m.taskInput.Focused() {
+					task := m.taskInput.Value()
+					if task != "" {
+						m.taskInput.Blur()
+						m.prioInput.Focus()
+						return m, nil
+					}
+				} else if m.prioInput.Focused() {
+					prio := m.prioInput.Value()
+					if prio != "" {
+						m.tasks = append(m.tasks, []string{m.taskInput.Value(), prio})
+						m.prioInput.Blur()
+						m.taskInput.SetValue("")
+						m.prioInput.SetValue("")
+						m.addingTasks = false
+						return m, nil
+					}
 				}
-				m.addingTasks = false
-				m.textInput.SetValue("") // Clear input after adding
-				return m, nil
-			}
-
-			if m.removingTasks {
+			} else if m.removingTasks {
 				// Remove the selected task
 				index := m.removeList.Index()
 				if index >= 0 && index < len(m.tasks) {
@@ -120,23 +128,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.removingTasks = false
 				m.choice = ""
 				return m, nil
-			}
-			if m.displayingTasks || m.removingTasks {
-				// Exit task display mode or remove mode and go back to the main menu
+			} else if m.displayingTasks {
+				// Exit task display mode and go back to the main menu
 				m.displayingTasks = false
-				m.removingTasks = false
 				m.choice = ""
 				return m, nil
 			}
 
+			// Handle the main menu selection
 			i, ok := m.list.SelectedItem().(item)
 			if ok {
 				m.choice = i.title
 				switch i.action {
 				case "add":
-					m.addingTasks = true
-					m.textInput.Focus()
-					return m, nil
+					return m.startAddTasks(), nil
 				case "display":
 					return m.startDisplayTasks(), nil
 				case "remove":
@@ -150,8 +155,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// Handle updates based on the current state
 	if m.addingTasks {
-		m.textInput, cmd = m.textInput.Update(msg)
+		if m.taskInput.Focused() {
+			m.taskInput, cmd = m.taskInput.Update(msg)
+		} else if m.prioInput.Focused() {
+			m.prioInput, cmd = m.prioInput.Update(msg)
+		}
 	} else if m.removingTasks {
 		m.removeList, cmd = m.removeList.Update(msg)
 	} else if m.displayingTasks {
@@ -160,6 +170,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.list, cmd = m.list.Update(msg)
 	}
 	return m, cmd
+}
+
+func (m model) startAddTasks() model {
+	m.addingTasks = true
+	m.taskInput.Placeholder = "Enter task"
+	m.taskInput.Focus()
+	return m
 }
 
 func (m model) startDisplayTasks() model {
@@ -216,11 +233,11 @@ func (m model) startRemoveTasks() model {
 
 func (m model) View() string {
 	if m.addingTasks {
-		return fmt.Sprintf(
-			"Enter task:\n\n%s\n\n%s",
-			m.textInput.View(),
-			"(esc to cancel, enter to add)",
-		) + "\n"
+		if m.taskInput.Focused() {
+			return fmt.Sprintf("Enter task:\n\n%s\n\n%s", m.taskInput.View(), "(esc to cancel, enter to next)") + "\n"
+		} else if m.prioInput.Focused() {
+			return fmt.Sprintf("Enter priority:\n\n%s\n\n%s", m.prioInput.View(), "(esc to cancel, enter to add)") + "\n"
+		}
 	}
 
 	if m.quitting {
@@ -252,11 +269,17 @@ func CLI(tasks_list [][]string) {
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
 
-	textInput := textinput.New()
-	textInput.Placeholder = "Enter task"
-	textInput.Focus()
-	textInput.CharLimit = 156
-	textInput.Width = 20
+	taskInput := textinput.New()
+	taskInput.Placeholder = "Enter task"
+	taskInput.Focus()
+	taskInput.CharLimit = 156
+	taskInput.Width = 20
+
+	prioInput := textinput.New()
+	prioInput.Placeholder = "Enter priority"
+	prioInput.Focus()
+	prioInput.CharLimit = 156
+	prioInput.Width = 20
 
 	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	displayList.Title = "DISPLAY_TASKS"
@@ -274,7 +297,8 @@ func CLI(tasks_list [][]string) {
 		list:        l,
 		displayList: displayList,
 		removeList:  removeList,
-		textInput:   textInput,
+		taskInput:   taskInput,
+		prioInput:   prioInput,
 		tasks:       tasks_list,
 	}
 
@@ -344,13 +368,3 @@ func task_save(tasks [][]string) {
 		fmt.Printf("error writing CSV file: %v", err)
 	}
 }
-
-/* func printer(tasks [][]string) {
-
-	for i, row := range tasks {
-		for j, task := range row {
-			fmt.Printf("tasks[%d][%d] = %s\n", i, j, task)
-		}
-	}
-
-} */
