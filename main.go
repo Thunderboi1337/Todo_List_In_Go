@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -87,9 +88,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "q", "ctrl+c":
+		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+		case "esc":
+			m.addingTasks = false
+			m.displayingTasks = false
+			m.removingTasks = false
+			m.taskInput.SetValue("")
+			m.prioInput.SetValue("")
+			return m, nil
 
 		case "enter":
 			if m.addingTasks {
@@ -99,12 +107,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.taskInput.Blur()
 						m.prioInput.Focus()
 						return m, nil
+					} else {
+						m.addingTasks = false
+						return m, nil
 					}
+
 				} else if m.prioInput.Focused() {
 					prio := m.prioInput.Value()
 					if prio != "" {
 						m.tasks = append(m.tasks, []string{m.taskInput.Value(), prio})
 						m.prioInput.Blur()
+						m.taskInput.SetValue("")
+						m.prioInput.SetValue("")
+						m.addingTasks = false
+						return m, nil
+					} else {
+						m.tasks = append(m.tasks, []string{m.taskInput.Value(), prio})
 						m.taskInput.SetValue("")
 						m.prioInput.SetValue("")
 						m.addingTasks = false
@@ -287,11 +305,29 @@ func CLI(tasks_list [][]string) {
 	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	removeList.Title = "REMOVE_TASKS"
 
-	l.SetShowStatusBar(false)
-	l.SetFilteringEnabled(false)
+	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
 
-	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
+	/* = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("↑", "y"), key.WithHelp("↑/y", "up")),
+			key.NewBinding(key.WithKeys("↓", "j"), key.WithHelp("↓/j", "down")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		}
+
+	}
+	*/
+
+	displayList.Styles.PaginationStyle = paginationStyle
+	displayList.Styles.HelpStyle = helpStyle
+
+	displayList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			key.NewBinding(key.WithKeys("↑", "y"), key.WithHelp("↑/y", "up")),
+			key.NewBinding(key.WithKeys("↓", "j"), key.WithHelp("↓/j", "down")),
+			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
+		}
+
+	}
 
 	m := model{
 		list:        l,
@@ -311,9 +347,9 @@ func CLI(tasks_list [][]string) {
 func main() {
 	var csvFile *os.File
 
-	if _, err := os.Stat("todo_list.csv"); os.IsNotExist(err) {
+	if _, err := os.Stat("csv_data/todo_list.csv"); os.IsNotExist(err) {
 		// File does not exist, create it
-		csvFile, err = os.Create("todo_list.csv")
+		csvFile, err = os.Create("csv_data/todo_list.csv")
 		if err != nil {
 			log.Fatalf("failed creating file: %s", err)
 		}
@@ -322,7 +358,7 @@ func main() {
 		log.Fatalf("error checking file: %s", err)
 	} else {
 		// File exists, open it
-		csvFile, err = os.OpenFile("todo_list.csv", os.O_RDONLY, 0644)
+		csvFile, err = os.OpenFile("csv_data/todo_list.csv", os.O_RDONLY, 0644)
 		if err != nil {
 			log.Fatalf("failed opening file: %s", err)
 		}
@@ -354,7 +390,7 @@ func task_collect(file *os.File) [][]string {
 }
 
 func task_save(tasks [][]string) {
-	csvFile, err := os.OpenFile("todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	csvFile, err := os.OpenFile("csv_data/todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
 	}
