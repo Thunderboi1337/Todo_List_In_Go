@@ -26,17 +26,13 @@ var (
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 
 	addHeadingStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("205")).
-			Background(lipgloss.Color("57")).
-			Italic(true).
-			Underline(true).
-			Align(lipgloss.Center).
-			Padding(1, 0, 1, 0).
-			Width(50)
+			Foreground(lipgloss.Color("#FAFAFA")).
+			Background(lipgloss.Color("#7D56F4")).
+			PaddingLeft(4).
+			PaddingTop(1)
 
 	addInstructionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("244")).
+				Foreground(lipgloss.Color("170")).
 				PaddingTop(1)
 )
 
@@ -269,14 +265,14 @@ func (m model) View() string {
 		if m.taskInput.Focused() {
 			return fmt.Sprintf(
 				"%s\n\n%s\n\n%s",
-				addHeadingStyle.Render("Add task:"),
+				addHeadingStyle.Render("ADD_TASK"),
 				m.taskInput.View(),
 				addInstructionStyle.Render("(esc to cancel, enter to next)"),
 			) + "\n"
 		} else if m.prioInput.Focused() {
 			return fmt.Sprintf(
 				"%s\n\n%s\n\n%s",
-				addInstructionStyle.Render("Add task:"),
+				addInstructionStyle.Render("ADD_TASK"),
 				m.prioInput.View(),
 				addInstructionStyle.Render("(esc to cancel, enter to add)"),
 			) + "\n"
