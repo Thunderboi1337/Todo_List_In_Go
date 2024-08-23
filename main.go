@@ -16,6 +16,28 @@ import (
 )
 
 const listHeight = 14
+const defaultWidth = 20
+
+type item struct {
+	title  string
+	action string
+}
+
+type model struct {
+	list            list.Model
+	taskInput       textinput.Model
+	prioInput       textinput.Model
+	table           table.Model
+	displayList     list.Model
+	removeTable     table.Model
+	removeList      list.Model
+	tasks           [][]string
+	choice          string
+	addingTasks     bool
+	displayingTasks bool
+	removingTasks   bool
+	quitting        bool
+}
 
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
@@ -34,11 +56,6 @@ var (
 				PaddingRight(1).
 				Align(lipgloss.Left)
 )
-
-type item struct {
-	title  string
-	action string
-}
 
 func (i item) FilterValue() string { return "" }
 
@@ -63,22 +80,6 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	}
 
 	fmt.Fprint(w, fn(str))
-}
-
-type model struct {
-	list            list.Model
-	taskInput       textinput.Model
-	prioInput       textinput.Model
-	table           table.Model
-	displayList     list.Model
-	removeTable     table.Model // Updated field
-	removeList      list.Model
-	tasks           [][]string
-	choice          string
-	addingTasks     bool
-	displayingTasks bool
-	removingTasks   bool
-	quitting        bool
 }
 
 func (m model) startAddTasks() model {
@@ -332,8 +333,6 @@ func CLI(tasks_list [][]string) {
 		item{title: "Save & Exit", action: "save_exit"},
 	}
 
-	const defaultWidth = 20
-
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
 	l.Title = "TODO_LIST"
 	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
@@ -354,17 +353,8 @@ func CLI(tasks_list [][]string) {
 	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	displayList.Title = "DISPLAY_TASKS"
 
-	displayList.Styles.PaginationStyle = paginationStyle
-	displayList.Styles.HelpStyle = helpStyle
-
-	displayList.KeyMap.Quit.SetHelp("ctrl+c", "quit")
-	displayList.KeyMap.Filter.Unbind()
-
 	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	removeList.Title = "REMOVE_TASKS"
-
-	removeList.KeyMap.Quit.SetHelp("ctrl+c", "quit")
-	removeList.KeyMap.Filter.Unbind()
 
 	m := model{
 		list:        l,
@@ -379,35 +369,6 @@ func CLI(tasks_list [][]string) {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-}
-
-func main() {
-	var csvFile *os.File
-
-	if _, err := os.Stat("csv_data/todo_list.csv"); os.IsNotExist(err) {
-		// File does not exist, create it
-		csvFile, err = os.Create("csv_data/todo_list.csv")
-		if err != nil {
-			log.Fatalf("failed creating file: %s", err)
-		}
-		defer csvFile.Close() // Ensure the file is closed after creation
-	} else if err != nil {
-		log.Fatalf("error checking file: %s", err)
-	} else {
-		// File exists, open it
-		csvFile, err = os.OpenFile("csv_data/todo_list.csv", os.O_RDONLY, 0644)
-		if err != nil {
-			log.Fatalf("failed opening file: %s", err)
-		}
-		// Ensure the file is closed after reading
-		defer csvFile.Close()
-	}
-
-	// Pass the file to the read_todo function
-	tasks := task_collect(csvFile)
-
-	CLI(tasks)
-
 }
 
 // Function that accepts the file as an argument and reads data from file argument
@@ -438,4 +399,33 @@ func task_save(tasks [][]string) {
 	if err != nil {
 		fmt.Printf("error writing CSV file: %v", err)
 	}
+}
+
+func main() {
+	var csvFile *os.File
+
+	if _, err := os.Stat("csv_data/todo_list.csv"); os.IsNotExist(err) {
+		// File does not exist, create it
+		csvFile, err = os.Create("csv_data/todo_list.csv")
+		if err != nil {
+			log.Fatalf("failed creating file: %s", err)
+		}
+		defer csvFile.Close() // Ensure the file is closed after creation
+	} else if err != nil {
+		log.Fatalf("error checking file: %s", err)
+	} else {
+		// File exists, open it
+		csvFile, err = os.OpenFile("csv_data/todo_list.csv", os.O_RDONLY, 0644)
+		if err != nil {
+			log.Fatalf("failed opening file: %s", err)
+		}
+		// Ensure the file is closed after reading
+		defer csvFile.Close()
+	}
+
+	// Pass the file to the read_todo function
+	tasks := task_collect(csvFile)
+
+	CLI(tasks)
+
 }
