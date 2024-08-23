@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -25,18 +24,15 @@ var (
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 
-	addHeadingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("230")).
-			Background(lipgloss.Color("62")).
-			MarginLeft(2).
-			MarginTop(1).
-			PaddingLeft(1).
-			PaddingRight(1).
-			Align(lipgloss.Left)
-
-	addInstructionStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("170")).
-				PaddingTop(1)
+	addInstructionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).PaddingTop(1)
+	addHeadingStyle     = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("230")).
+				Background(lipgloss.Color("62")).
+				MarginLeft(2).
+				MarginTop(1).
+				PaddingLeft(1).
+				PaddingRight(1).
+				Align(lipgloss.Left)
 )
 
 type item struct {
@@ -75,6 +71,7 @@ type model struct {
 	prioInput       textinput.Model
 	table           table.Model
 	displayList     list.Model
+	removeTable     table.Model // Updated field
 	removeList      list.Model
 	tasks           [][]string
 	choice          string
@@ -132,14 +129,34 @@ func (m model) startRemoveTasks() model {
 	if len(m.tasks) == 0 {
 		m.choice = "No tasks available."
 	} else {
-		var items []list.Item
-		for _, task := range m.tasks {
-			items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Task", Width: 40},
+			{Title: "Priority", Width: 25},
 		}
-		m.removeList.SetItems(items)
+
+		var rows []table.Row
+
+		for id, taskList := range m.tasks {
+			row := []string{
+				fmt.Sprintf("%d", id+1), // Task ID
+				taskList[0],             // Task Name
+				taskList[1],             // Priority
+			}
+			rows = append(rows, row)
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+		)
+
+		m.removeTable = t
 		m.removingTasks = true
 		m.choice = ""
 	}
+
 	return m
 }
 
@@ -156,6 +173,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.removeList.SetWidth(msg.Width)
 		m.displayList.SetWidth(msg.Width)
 		m.table.SetWidth(msg.Width)
+		m.removeTable.SetWidth(msg.Width) // Add this line
 		return m, nil
 
 	case tea.KeyMsg:
@@ -202,7 +220,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.removingTasks {
-				// Remove the selected task
+				// Remove the selected task from the table
+
 				index := m.removeList.Index()
 				if index >= 0 && index < len(m.tasks) {
 					m.tasks = append(m.tasks[:index], m.tasks[index+1:]...)
@@ -253,7 +272,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prioInput, cmd = m.prioInput.Update(msg)
 		}
 	} else if m.removingTasks {
-		m.removeList, cmd = m.removeList.Update(msg)
+		m.removeTable, cmd = m.removeTable.Update(msg) // Update this line
 	} else if m.displayingTasks {
 		m.table, cmd = m.table.Update(msg)
 	} else {
@@ -263,7 +282,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// View logic
 	if m.addingTasks {
 		if m.taskInput.Focused() {
 			return fmt.Sprintf(
@@ -275,7 +293,7 @@ func (m model) View() string {
 		} else if m.prioInput.Focused() {
 			return fmt.Sprintf(
 				"%s\n\n%s\n\n%s",
-				addInstructionStyle.Render("ADD_TASK"),
+				addHeadingStyle.Render("ADD_TASK"),
 				m.prioInput.View(),
 				addInstructionStyle.Render("(esc to cancel, enter to add)"),
 			) + "\n"
@@ -288,11 +306,19 @@ func (m model) View() string {
 	}
 
 	if m.removingTasks {
-		return "\n" + m.removeList.View()
+		return fmt.Sprintf(
+			"\n%s\n\n%s",
+			addHeadingStyle.Render("REMOVE_TASKS"),
+			m.removeTable.View(),
+		)
 	}
 
 	if m.displayingTasks {
-		return "\n" + m.table.View()
+		return fmt.Sprintf(
+			"\n%s\n\n%s",
+			addHeadingStyle.Render("DISPLAY_TASKS"),
+			m.table.View(),
+		)
 	}
 
 	return "\n" + m.list.View()
@@ -328,20 +354,17 @@ func CLI(tasks_list [][]string) {
 	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	displayList.Title = "DISPLAY_TASKS"
 
-	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
-	removeList.Title = "REMOVE_TASKS"
-
 	displayList.Styles.PaginationStyle = paginationStyle
 	displayList.Styles.HelpStyle = helpStyle
 
-	displayList.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{
-			key.NewBinding(key.WithKeys("↑", "y"), key.WithHelp("↑/y", "up")),
-			key.NewBinding(key.WithKeys("↓", "j"), key.WithHelp("↓/j", "down")),
-			key.NewBinding(key.WithKeys("q"), key.WithHelp("q", "quit")),
-		}
+	displayList.KeyMap.Quit.SetHelp("ctrl+c", "quit")
+	displayList.KeyMap.Filter.Unbind()
 
-	}
+	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
+	removeList.Title = "REMOVE_TASKS"
+
+	removeList.KeyMap.Quit.SetHelp("ctrl+c", "quit")
+	removeList.KeyMap.Filter.Unbind()
 
 	m := model{
 		list:        l,
@@ -382,8 +405,6 @@ func main() {
 
 	// Pass the file to the read_todo function
 	tasks := task_collect(csvFile)
-
-	//printer(tasks)
 
 	CLI(tasks)
 
