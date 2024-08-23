@@ -26,10 +26,13 @@ var (
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 
 	addHeadingStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
-			PaddingLeft(4).
-			PaddingTop(1)
+			Foreground(lipgloss.Color("230")).
+			Background(lipgloss.Color("62")).
+			MarginLeft(2).
+			MarginTop(1).
+			PaddingLeft(1).
+			PaddingRight(1).
+			Align(lipgloss.Left)
 
 	addInstructionStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("170")).
