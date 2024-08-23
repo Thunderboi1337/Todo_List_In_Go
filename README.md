@@ -66,8 +66,5 @@ Here are some GIFs demonstrating how to use the application:
 
 ## License
 
-This project is open source, and you're free to use, modify, and distribute it as you see fit.
+Do what you wwant, don't care :*
 
-## Contributing
-
-Contributions are welcome! If you have suggestions for improvements or new features, feel free to open an issue or submit a pull request. A link to the [Bubble Tea](https://github.com/charmbracelet/bubbletea) framework is included for further exploration.
