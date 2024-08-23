@@ -194,9 +194,9 @@ func (m model) startDisplayTasks() model {
 		for id, taskList := range m.tasks {
 
 			row := []string{
-				fmt.Sprintf("%d", id), // Task ID
-				taskList[0],           // Task Name
-				taskList[1],           // Priority
+				fmt.Sprintf("%d", id+1), // Task ID
+				taskList[0],             // Task Name
+				taskList[1],             // Priority
 			}
 
 			rows = append(rows, row)
