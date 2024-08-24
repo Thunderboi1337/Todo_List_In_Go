@@ -43,8 +43,6 @@ type model struct {
 var (
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 
 	addInstructionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).PaddingTop(1)
@@ -307,20 +305,23 @@ func (m model) View() string {
 		return quitTextStyle.Render("")
 	}
 
-	if m.removingTasks {
-		return fmt.Sprintf(
-			"\n%s\n\n%s",
-			addHeadingStyle.Render("REMOVE_TASKS"),
-			m.removeTable.View(),
-		)
-	}
-
 	if m.displayingTasks {
 		return fmt.Sprintf(
-			"\n%s\n\n%s",
+			"%s%s%s",
 			addHeadingStyle.Render("DISPLAY_TASKS"),
 			m.table.View(),
-		)
+			addInstructionStyle.Render("(esc to return"),
+		) + "\n"
+	}
+
+	if m.removingTasks {
+		return fmt.Sprintf(
+			"%s%s%s",
+			addHeadingStyle.Render("REMOVE_TASKS"),
+			m.removeTable.View(),
+			addInstructionStyle.Render("(esc to return"),
+		) + "\n"
+
 	}
 
 	return "\n" + m.list.View()
