@@ -407,13 +407,14 @@ func getTodoFilePath() string {
 	if err != nil {
 		panic(err)
 	}
-	return filepath.Join(homeDir, ".local", "share", "tasks", "todo_list.csv")
-
+	// Build the path to the todo list file
+	return filepath.Join(homeDir, "..", ".local", "share", "Todo_List")
 }
 
 var todoFile = getTodoFilePath()
 
 func main() {
+
 	var csvFile *os.File
 
 	if _, err := os.Stat(todoFile); os.IsNotExist(err) {

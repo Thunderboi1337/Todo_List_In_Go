@@ -7,8 +7,9 @@ CONFIG_DIR = ~/.config/$(APP_NAME)
 DATA_DIR = ~/.local/share/$(APP_NAME)
 CACHE_DIR = ~/.cache/$(APP_NAME)
 DESKTOP_FILE = /usr/share/applications/$(APP_NAME).desktop
+TODO_FILE = $(DATA_DIR)/todo_list.csv
 
-# Icon (set this to the path of your icon file)
+# Icon (For later if I want to add Icon)
 ICON_PATH = /path/to/icon.png
 
 # Build the Go program
@@ -21,12 +22,10 @@ install: build
 	@echo "Installing $(APP_NAME)..."
 	# Move the binary to /usr/local/bin
 	sudo mv $(APP_NAME) $(INSTALL_DIR)/
-	# Create config, data, and cache directories if they don't exist
 	mkdir -p $(CONFIG_DIR)
 	mkdir -p $(DATA_DIR)
 	mkdir -p $(CACHE_DIR)
-	# Copy or create default config files (if any)
-	# cp default_config.json $(CONFIG_DIR)/config.json
+	@touch $(TODO_FILE)
 
 # Create a .desktop file for the application menu
 desktop-entry:
@@ -37,7 +36,7 @@ desktop-entry:
 	echo "Comment=Save your tasks" | sudo tee -a $(DESKTOP_FILE)
 	echo "Exec=$(INSTALL_DIR)/$(APP_NAME)" | sudo tee -a $(DESKTOP_FILE)
 	echo "Icon=$(ICON_PATH)" | sudo tee -a $(DESKTOP_FILE)
-	echo "Terminal=false" | sudo tee -a $(DESKTOP_FILE)
+	echo "Terminal=true" | sudo tee -a $(DESKTOP_FILE)
 	echo "Type=Application" | sudo tee -a $(DESKTOP_FILE)
 	echo "Categories=Utility;" | sudo tee -a $(DESKTOP_FILE)
 	# Make the .desktop file executable
