@@ -15,6 +15,7 @@ ICON_PATH = /path/to/icon.png
 # Build the Go program
 build:
 	@echo "Building $(APP_NAME)..."
+	GOOS=linux GOARCH=amd64 go mod tidy
 	GOOS=linux GOARCH=amd64 go build -o $(APP_NAME) main.go
 
 # Install the binary and set up directories

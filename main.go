@@ -413,10 +413,10 @@ func getTodoFilePath() string {
 }
 
 func main() {
-	var todoFile = getTodoFilePath()
 
-	fmt.Printf("Using file path: %s\n", todoFile) // Print the file path for debugging
 	var csvFile *os.File
+
+	var todoFile = getTodoFilePath()
 
 	if _, err := os.Stat(todoFile); os.IsNotExist(err) {
 		// File does not exist, create it
