@@ -41,10 +41,9 @@ type model struct {
 }
 
 var (
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
-
+	itemStyle           = lipgloss.NewStyle().PaddingLeft(4)
+	selectedItemStyle   = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	quitTextStyle       = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 	addInstructionStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).PaddingTop(1)
 	addHeadingStyle     = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("230")).
@@ -94,7 +93,7 @@ func (m model) startDisplayTasks() model {
 	} else {
 		columns := []table.Column{
 			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 40},
+			{Title: "Task", Width: 60},
 			{Title: "Priority", Width: 25},
 		}
 
@@ -131,7 +130,7 @@ func (m model) startRemoveTasks() model {
 	} else {
 		columns := []table.Column{
 			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 40},
+			{Title: "Task", Width: 60},
 			{Title: "Priority", Width: 25},
 		}
 
@@ -336,7 +335,7 @@ func CLI(tasks_list [][]string) {
 	}
 
 	l := list.New(items, itemDelegate{}, defaultWidth, listHeight)
-	l.Title = "TODO_LIST"
+	l.Title = "Gora"
 	l.KeyMap.Quit.SetHelp("ctrl+c", "quit")
 	l.KeyMap.Filter.Unbind()
 
@@ -410,7 +409,7 @@ func getTodoFilePath() string {
 		panic(err)
 	}
 	// Build the path to the todo list file
-	return filepath.Join(homeDir, ".local", "share", "Todo_List", "todo_list.csv")
+	return filepath.Join(homeDir, ".local", "share", "Gora", "Gora_list.csv")
 }
 
 func main() {

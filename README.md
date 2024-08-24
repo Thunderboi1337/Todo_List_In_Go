@@ -1,4 +1,4 @@
-# Todo List in Go
+# Todo List in Go - Gora
 
 **A Work in Progress**
 
@@ -64,13 +64,13 @@ If you prefer not to use the Makefile, you can follow these steps manually:
 
 3. **Build the project**:
     ```sh
-    go build -o todo_list main.go
+    go build -o Gora main.go
     ```
-    This command compiles the Go code into an executable named `todo_list`.
+    This command compiles the Go code into an executable named `Gora`.
 
 4. **Run the application**:
     ```sh
-    ./todo_list
+    ./Gora
     ```
     This command runs the compiled application directly from the terminal.
 
