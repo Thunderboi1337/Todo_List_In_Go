@@ -387,6 +387,7 @@ func task_collect(file *os.File) [][]string {
 }
 
 func task_save(tasks [][]string) {
+	var todoFile = getTodoFilePath()
 	csvFile, err := os.OpenFile(todoFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
@@ -411,9 +412,8 @@ func getTodoFilePath() string {
 	return filepath.Join(homeDir, ".local", "share", "Todo_List", "todo_list.csv")
 }
 
-var todoFile = getTodoFilePath()
-
 func main() {
+	var todoFile = getTodoFilePath()
 
 	fmt.Printf("Using file path: %s\n", todoFile) // Print the file path for debugging
 	var csvFile *os.File

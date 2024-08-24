@@ -1,2 +1,4 @@
 main
 todo_list.csv
+go.mod
+go.sum
