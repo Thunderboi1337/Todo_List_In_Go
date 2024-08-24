@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -386,7 +387,7 @@ func task_collect(file *os.File) [][]string {
 }
 
 func task_save(tasks [][]string) {
-	csvFile, err := os.OpenFile("csv_data/todo_list.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	csvFile, err := os.OpenFile(todoFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalf("failed opening file: %s", err)
 	}
@@ -401,12 +402,23 @@ func task_save(tasks [][]string) {
 	}
 }
 
+func getTodoFilePath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Join(homeDir, ".local", "share", "tasks", "todo_list.csv")
+
+}
+
+var todoFile = getTodoFilePath()
+
 func main() {
 	var csvFile *os.File
 
-	if _, err := os.Stat("csv_data/todo_list.csv"); os.IsNotExist(err) {
+	if _, err := os.Stat(todoFile); os.IsNotExist(err) {
 		// File does not exist, create it
-		csvFile, err = os.Create("csv_data/todo_list.csv")
+		csvFile, err = os.Create(todoFile)
 		if err != nil {
 			log.Fatalf("failed creating file: %s", err)
 		}
@@ -415,7 +427,7 @@ func main() {
 		log.Fatalf("error checking file: %s", err)
 	} else {
 		// File exists, open it
-		csvFile, err = os.OpenFile("csv_data/todo_list.csv", os.O_RDONLY, 0644)
+		csvFile, err = os.OpenFile(todoFile, os.O_RDONLY, 0644)
 		if err != nil {
 			log.Fatalf("failed opening file: %s", err)
 		}
