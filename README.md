@@ -1,63 +1,105 @@
-# Todo List in Go 
-**** Working progress ****
-A simple command-line Todo List application built in Go, utilizing [Bubble Tea](https://github.com/charmbracelet/bubbletea) for an interactive text-based user interface. This project was created as a learning exercise to get familiar with Go and CSV data handling.
+# Todo List in Go
+
+**A Work in Progress**
+
+This command-line Todo List application is built in Go and uses [Bubble Tea](https://github.com/charmbracelet/bubbletea) for an interactive and responsive text-based user interface. This project has been a valuable learning exercise, helping me gain hands-on experience with Go, CSV data handling, and application installation.
 
 ## Features
 
-- **Interactive CLI**: Leverages Bubble Tea for an intuitive and responsive terminal user interface.
-- **CSV Storage**: Tasks are stored in a CSV file for simplicity and ease of access.
-- **Task Management**: Users can add, display, and remove tasks with associated priorities.
+- **Interactive CLI**: Provides an intuitive terminal interface with Bubble Tea.
+- **CSV Storage**: Tasks are managed using a CSV file for ease of use.
+- **Task Management**: Users can add, display, and remove tasks with priorities.
 
 ## Installation
 
-To get started with the project:
+Follow these steps to set up the Todo List application on your system:
+
+### Using Makefile
 
 1. **Clone the repository**:
     ```sh
     git clone https://github.com/thunderboi1337/Todo_List_In_Go.git
     cd Todo_List_In_Go
     ```
+    This command clones the project repository to your local machine and navigates into the project directory.
+
+2. **Build the project**:
+    ```sh
+    make build
+    ```
+    This command compiles the Go source code into an executable binary named `Todo_List`. The `make build` step also runs `go mod tidy` to ensure all dependencies are properly handled.
+
+3. **Install the application**:
+    ```sh
+    make install
+    ```
+    This command installs the application:
+    - Moves the compiled binary to `/usr/local/bin`, making it available system-wide.
+    - Creates necessary directories for configuration, data, and cache (`~/.config/Todo_List`, `~/.local/share/Todo_List`, and `~/.cache/Todo_List`).
+
+4. **Create a desktop entry**:
+    ```sh
+    make desktop-entry
+    ```
+    This command creates a desktop entry for the application:
+    - Adds a `.desktop` file to `/usr/share/applications/`, which integrates the application into the desktop environment's application menu.
+    - This file contains metadata about the application, including its name, comment, executable path, icon path, and terminal usage.
+
+### Without Makefile
+
+If you prefer not to use the Makefile, you can follow these steps manually:
+
+1. **Clone the repository**:
+    ```sh
+    git clone https://github.com/thunderboi1337/Todo_List_In_Go.git
+    cd Todo_List_In_Go
+    ```
+    Clone the repository and navigate to the project directory.
 
 2. **Install dependencies**:
     ```sh
     go mod tidy
     ```
+    This command ensures that all required dependencies for the project are installed and properly managed.
 
 3. **Build the project**:
     ```sh
-    go build main.go
+    go build -o todo_list main.go
     ```
+    This command compiles the Go code into an executable named `todo_list`.
 
 4. **Run the application**:
     ```sh
-    ./main
+    ./todo_list
     ```
+    This command runs the compiled application directly from the terminal.
 
 ## Usage
 
-Upon running the application, you can interact with it using the following commands:
+Once the application is running, you can use the following commands:
 
-- **Add tasks**: Enter a task description followed by its priority.
-- **Display tasks**: View all current tasks along with their priorities.
-- **Remove tasks**: Delete tasks by selecting them from the list.
+- **Add tasks**: Input a task description and priority to add new tasks.
+- **Display tasks**: View all tasks and their priorities.
+- **Remove tasks**: Select and delete tasks from the list.
 
 ### Example Usage
 
 Here are some GIFs demonstrating how to use the application:
-## Adding task
-![Add and Complete Task](screenshots/Todolist.GIF)
 
-## Display task
-![Display Task](screenshots/TodolistDisplay.GIF)
+- **Adding a task**:  
+  ![Add and Complete Task](screenshots/Todolist.GIF)
 
-## Remove task
-![View and Delete Task](screenshots/TodolistRemove.GIF)
+- **Displaying tasks**:  
+  ![Display Task](screenshots/TodolistDisplay.GIF)
+
+- **Removing a task**:  
+  ![View and Delete Task](screenshots/TodolistRemove.GIF)
 
 ## Code Structure
 
-- The application reads and writes tasks to a CSV file (`csv_data/todo_list.csv`).
-- Tasks are managed in-memory during the session and saved upon exiting the program.
-- The UI is divided into different states: adding tasks, displaying tasks, and removing tasks.
+- **CSV File**: The application reads from and writes to a CSV file located at `~/.local/share/Todo_List/todo_list.csv`.
+- **In-Memory Management**: Tasks are managed in memory during the session and saved upon exiting.
+- **UI States**: The user interface supports different states: adding, displaying, and removing tasks.
 
 ## Dependencies
 
@@ -66,5 +108,4 @@ Here are some GIFs demonstrating how to use the application:
 
 ## License
 
-Do what you want with this, anybody is allowed to use it :*
-
+Feel free to use and modify this project as you see fit. Enjoy!
