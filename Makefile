@@ -7,7 +7,7 @@ CONFIG_DIR = ~/.config/$(APP_NAME)
 DATA_DIR = ~/.local/share/$(APP_NAME)
 CACHE_DIR = ~/.cache/$(APP_NAME)
 DESKTOP_FILE = /usr/share/applications/$(APP_NAME).desktop
-TODO_FILE = $(DATA_DIR)/todo_list.csv
+#TODO_FILE = $(DATA_DIR)/todo_list.csv
 
 # Icon (For later if I want to add Icon)
 ICON_PATH = /path/to/icon.png
@@ -25,7 +25,7 @@ install: build
 	mkdir -p $(CONFIG_DIR)
 	mkdir -p $(DATA_DIR)
 	mkdir -p $(CACHE_DIR)
-	@touch $(TODO_FILE)
+	
 
 # Create a .desktop file for the application menu
 desktop-entry:
