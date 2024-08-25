@@ -1,5 +1,5 @@
 # Name of your program
-APP_NAME = Todo_List
+APP_NAME = Gora
 
 # Paths
 INSTALL_DIR = /usr/local/bin
