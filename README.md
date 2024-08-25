@@ -10,7 +10,7 @@ This command-line Todo List application is built in Go and uses [Bubble Tea](htt
 
 ## Installation
 
-Follow these steps to set up the Todo List application on your system:
+Follow these steps to set up Gora on your system:
 
 ### Using Makefile
 
@@ -25,7 +25,7 @@ Follow these steps to set up the Todo List application on your system:
     ```sh
     make build
     ```
-    This command compiles the Go source code into an executable binary named `Todo_List`. The `make build` step also runs `go mod tidy` to ensure all dependencies are properly handled.
+    This command compiles the Go source code into an executable binary named `Gora`. The `make build` step also runs `go mod tidy` to ensure all dependencies are properly handled.
 
 3. **Install the application**:
     ```sh
@@ -33,7 +33,7 @@ Follow these steps to set up the Todo List application on your system:
     ```
     This command installs the application:
     - Moves the compiled binary to `/usr/local/bin`, making it available system-wide.
-    - Creates necessary directories for configuration, data, and cache (`~/.config/Todo_List`, `~/.local/share/Todo_List`, and `~/.cache/Todo_List`).
+    - Creates necessary directories for configuration, data, and cache (`~/.config/Gora`, `~/.local/share/Gora`, and `~/.cache/Gora`).
 
 4. **Create a desktop entry**:
     ```sh
@@ -95,7 +95,7 @@ Here are some GIFs demonstrating how to use the application:
 
 ## Code Structure
 
-- **CSV File**: The application reads from and writes to a CSV file located at `~/.local/share/Todo_List/todo_list.csv`.
+- **CSV File**: The application reads from and writes to a CSV file located at `~/.local/share/Todo_List/Gora.csv`.
 - **In-Memory Management**: Tasks are managed in memory during the session and saved upon exiting.
 - **UI States**: The user interface supports different states: adding, displaying, and removing tasks.
 
