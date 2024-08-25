@@ -1,7 +1,5 @@
 # Todo List in Go - Gora
 
-**A Work in Progress**
-
 This command-line Todo List application is built in Go and uses [Bubble Tea](https://github.com/charmbracelet/bubbletea) for an interactive and responsive text-based user interface. This project has been a valuable learning exercise, helping me gain hands-on experience with Go, CSV data handling, and application installation.
 
 ## Features
