@@ -306,7 +306,7 @@ func (m model) View() string {
 
 	if m.displayingTasks {
 		return fmt.Sprintf(
-			"%s%s%s",
+			"%s\n\n%s%s",
 			addHeadingStyle.Render("DISPLAY_TASKS"),
 			m.table.View(),
 			addInstructionStyle.Render("(esc to return"),
@@ -315,7 +315,7 @@ func (m model) View() string {
 
 	if m.removingTasks {
 		return fmt.Sprintf(
-			"%s%s%s",
+			"%s\n\n%s%s",
 			addHeadingStyle.Render("REMOVE_TASKS"),
 			m.removeTable.View(),
 			addInstructionStyle.Render("(esc to return"),
