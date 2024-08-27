@@ -29,8 +29,6 @@ type model struct {
 	taskInput       textinput.Model
 	prioInput       textinput.Model
 	table           table.Model
-	displayList     list.Model
-	removeTable     table.Model
 	removeList      list.Model
 	tasks           [][]string
 	choice          string
@@ -128,30 +126,14 @@ func (m model) startRemoveTasks() model {
 	if len(m.tasks) == 0 {
 		m.choice = "No tasks available."
 	} else {
-		columns := []table.Column{
-			{Title: "ID", Width: 5},
-			{Title: "Task", Width: 60},
-			{Title: "Priority", Width: 25},
+		var items []list.Item
+
+		for _, taskList := range m.tasks {
+			items = append(items, item{title: strings.Join(taskList, ", "), action: "remove"})
 		}
 
-		var rows []table.Row
-
-		for id, taskList := range m.tasks {
-			row := []string{
-				fmt.Sprintf("%d", id+1), // Task ID
-				taskList[0],             // Task Name
-				taskList[1],             // Priority
-			}
-			rows = append(rows, row)
-		}
-
-		t := table.New(
-			table.WithColumns(columns),
-			table.WithRows(rows),
-			table.WithFocused(true),
-		)
-
-		m.removeTable = t
+		m.removeList.SetItems(items)
+		m.removeList.Select(0) // Ensure the first item is selected by default
 		m.removingTasks = true
 		m.choice = ""
 	}
@@ -170,9 +152,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.list.SetWidth(msg.Width)
 		m.removeList.SetWidth(msg.Width)
-		m.displayList.SetWidth(msg.Width)
-		m.table.SetWidth(msg.Width)
-		m.removeTable.SetWidth(msg.Width) // Add this line
 		return m, nil
 
 	case tea.KeyMsg:
@@ -219,8 +198,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			} else if m.removingTasks {
-				// Remove the selected task from the table
-
+				// Remove the selected task from the list
 				index := m.removeList.Index()
 				if index >= 0 && index < len(m.tasks) {
 					m.tasks = append(m.tasks[:index], m.tasks[index+1:]...)
@@ -231,6 +209,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						items = append(items, item{title: strings.Join(task, ", "), action: "remove"})
 					}
 					m.removeList.SetItems(items)
+					if len(items) > 0 {
+						m.removeList.Select(0) // Select the first item again
+					}
 				}
 
 				m.removingTasks = false
@@ -271,7 +252,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.prioInput, cmd = m.prioInput.Update(msg)
 		}
 	} else if m.removingTasks {
-		m.removeTable, cmd = m.removeTable.Update(msg) // Update this line
+		m.removeList, cmd = m.removeList.Update(msg) // Update this line
 	} else if m.displayingTasks {
 		m.table, cmd = m.table.Update(msg)
 	} else {
@@ -315,10 +296,9 @@ func (m model) View() string {
 
 	if m.removingTasks {
 		return fmt.Sprintf(
-			"%s\n\n%s%s",
-			addHeadingStyle.Render("REMOVE_TASKS"),
-			m.removeTable.View(),
-			addInstructionStyle.Render("(esc to return"),
+			"\n%s%s",
+			m.removeList.View(), // Show the removeList instead of removeTable
+			addInstructionStyle.Render("(esc to return)"),
 		) + "\n"
 
 	}
@@ -351,19 +331,15 @@ func CLI(tasks_list [][]string) {
 	prioInput.CharLimit = 156
 	prioInput.Width = 20
 
-	displayList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
-	displayList.Title = "DISPLAY_TASKS"
-
 	removeList := list.New([]list.Item{}, itemDelegate{}, defaultWidth, listHeight)
 	removeList.Title = "REMOVE_TASKS"
 
 	m := model{
-		list:        l,
-		displayList: displayList,
-		removeList:  removeList,
-		taskInput:   taskInput,
-		prioInput:   prioInput,
-		tasks:       tasks_list,
+		list:       l,
+		removeList: removeList,
+		taskInput:  taskInput,
+		prioInput:  prioInput,
+		tasks:      tasks_list,
 	}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
